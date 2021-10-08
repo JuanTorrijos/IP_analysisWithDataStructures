@@ -1,82 +1,98 @@
-#include <iostream>
-#include "bst.hpp"
+#include "grafo.hpp"
 #include <fstream>
 
-void buscarAccesoArbol(BST<Acceso *> * arbol, int accesos){
-    if(arbol->buscarNodo(new Acceso("***", accesos))){
-        cout<<"Las Ip con "<<accesos<<" accesos son: "<<endl;
-        arbol->buscarNodo(new Acceso("***", accesos))->getValor()->imprimirVec();
-    }else 
-        cout<<"Ese numero de accesos no se encuentra en el arbol";
-    cout<<endl;
-}
-
 int main(){
-    BST<Acceso *> * arbol=new BST<Acceso *>();
-    //Lectura de archivo separada
+    Grafo<string> * ejemploGrafo=new Grafo<string>();
     ifstream datos;
-    datos.open("bitacoraCompleta.txt");
-    string aux,ipp;
-    ListaDL<Acceso *> * lista1=new ListaDL<Acceso *>();
+    datos.open("bitacoraTest1.txt");
+    string aux,ip1,ip2;
+    
+    //1.-Construcción del grafo
     while(datos.good()){
         getline(datos,aux,' ');
         getline(datos,aux,' ');
         getline(datos,aux,' ');
-        getline(datos,ipp,':');
+        getline(datos,ip1,' ');
+        getline(datos,ip2,' ');
         getline(datos,aux);
-        if(lista1->buscarListaDL(ipp)){
-            Acceso * ippAcceso = lista1->buscarListaDL(ipp)->getValor();
-            ippAcceso->setAccesos(ippAcceso->getAccesos()+1);
-        }else{
-            lista1->agregaFinal(new Acceso(ipp, 1));
-        }
-
+        //Agregar ips de origen y destino si es que no existen
+        if(!ejemploGrafo->buscarNodo(ip1))
+            ejemploGrafo->insertarNodoGrafo(ip1);
+        if(!ejemploGrafo->buscarNodo(ip2))
+            ejemploGrafo->insertarNodoGrafo(ip2);
+        //Agregar el arco
+        Arco<string> * arcoNuevo= ejemploGrafo->buscarArco(ip1, ip2);
+        if(arcoNuevo)
+            arcoNuevo->setPeso(arcoNuevo->getPeso()+1);//Ya existe el arco entonces solo actualizo el peso
+        else
+            ejemploGrafo->agregarArco(ip1,ip2,1);        
     }
-    datos.close();
 
-    //Escritura de archivo
-    ofstream listaS("ListaAccesos.txt"); //Escribir un archivo
-    //Agregar los elementos de la lista al arbol y tambien al archivo
-    NodoDL<Acceso *> * nodo=lista1->getHead();
-            while(nodo){
-                arbol->agregaNodoIterativo(nodo->getValor());
-                listaS<<* nodo->getValor();
-                nodo=nodo->getSiguiente();
+    ejemploGrafo->imprimirGrafo();
+
+    //Solucion punto 4
+    Lista<string> * listaIP;
+    int max_peso=0;
+    //Recorer la lista de nodosGrafo
+    Nodo<NodoGrafo<string> *> * actual = ejemploGrafo->getNodos()->getHead();
+    while(actual){
+        //Recorer la lista de los arcos del nodoGrafo actual
+        int suma_peso=0;
+        Nodo<Arco<string>*> * nodoArco = actual->getValor()->getArcos()->getHead();
+        //Sumar los pesos asociados a cada arco
+        while(nodoArco){
+            suma_peso=suma_peso + nodoArco->getValor()->getPeso();
+            nodoArco=nodoArco->getSiguiente();
+        }
+        //Buscar el nodoGrafo o nodosGrafo que tenga la suma de pesos mayor
+        if(suma_peso==max_peso){
+            listaIP->agregarInicio(actual->getValor()->getValor());
+        }else if(suma_peso>max_peso){
+            max_peso=suma_peso;
+            delete listaIP; //Liberar el espacio de memoria de la lista anterior
+            listaIP = new Lista<string>();
+            listaIP->agregarInicio(actual->getValor()->getValor());
+        }
+        actual=actual->getSiguiente();
+    }
+
+    cout<<"¿Cual o cuales son las direcciones IP que generan mas fallas?"<<endl;
+    listaIP->imprimirLista();
+    cout<<"Numero de fallas: "<<max_peso<<endl;
+
+    //Solucion al punto 3
+    listaIP=new Lista<string>();
+    max_peso=0;
+    //Recorrer la lista de nodoGrafo
+    actual = ejemploGrafo->getNodos()->getHead();
+    int suma_peso=0;
+    while (actual){
+        Nodo<NodoGrafo<string>*> * destino=actual;
+        Nodo<NodoGrafo<string>*> * origen=ejemploGrafo->getNodos()->getHead();
+        //Sumar por cada nodoGrafo la veces que tenga como nodoGrafo destino
+        while(origen){
+            Arco<string> * arco = ejemploGrafo->buscarArco(origen->getValor()->getValor(), destino->getValor()->getValor());
+            if(arco){
+                suma_peso=suma_peso + arco->getPeso();
             }
-    listaS.close();
-    
-    //lista1->imprimirLista();
-    int opcion = 0;
-    int num=0;
-    while(opcion!=4){
-        cout<<"Seleccione una opción (1-4) "<<endl;
-        cout<<"Opción 1-Imprimir lista simple"<<endl;
-        cout<<"Opción 2-Imprimir en Order y Preorder "<<endl;
-        cout<<"Opción 3-Imprimir ip con acceso repetido "<<endl;
-        cout<<"Opción 4-Salir "<<endl;
-        cin>>opcion;
-        if (opcion==1){
-            lista1->imprimirLista();
+            origen=origen->getSiguiente();   
         }
-        else if (opcion==2){
-            cout<<"inorder: "<<endl;
-            arbol->imprimirArbolInOrder();
 
-            cout<<"Preorder: "<<endl;
-            arbol->imprimirArbolPreOrder();
+        if(suma_peso==max_peso){
+            listaIP->agregarInicio(destino->getValor()->getValor());
+        }else if(suma_peso>max_peso){
+            max_peso=suma_peso;
+            delete listaIP; //Liberar el espacio de memoria de la lista anterior
+            listaIP = new Lista<string>();
+            listaIP->agregarInicio(destino->getValor()->getValor());
         }
-        else if (opcion==3){
-            cout<<"Ponga el numero de alguno de los accesos repetidos: ";
-            cin>>num;
-            cout<<endl;
-            buscarAccesoArbol(arbol, num);
-        }
-        else if(opcion == 4){
-            cout<<"Camara *despedida chola*"<<endl;
-        }else{
-            cout<<"Opcion Invalida"<<endl;  
-        }
-    } 
-    return 0;
+        actual = actual->getSiguiente();
+    }
+
+    cout<<"¿Cual o cuales son las direcciones IP que reciben mas fallas?"<<endl;
+    listaIP->imprimirLista();
+    cout<<"Numero de fallas: "<<max_peso<<endl;
+
+    datos.close();
+    return 0;    
 }
-
